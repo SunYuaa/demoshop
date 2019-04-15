@@ -17,6 +17,11 @@ class WxController extends Controller
     {
         //接受服务器推送
         $content = file_get_contents('php://input');
+        //将事件写入日志
+        $time = date('Y/m/d H:i:s');
+        $str = $time . $content . "<br/>";
+        file_put_contents('logs/wx_event.logs',$str,FILE_APPEND);
+        
         $data = simplexml_load_string($content);
         echo 'ToUserName:'.$data->ToUserName;echo '<br/>';
         echo 'FromUserName:'.$data->FromUserName;echo '<br/>';
