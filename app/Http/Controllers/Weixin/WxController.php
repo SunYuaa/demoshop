@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Weixin;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Model\Weixin\WxModel;
+use Illuminate\Support\Facades\Redis;
+use GuzzleHttp\Client;
 
 class WxController extends Controller
 {
@@ -32,7 +34,7 @@ class WxController extends Controller
 
         //用户信息加入数据库
         $userInfo = $this->getUserInfo($openid);
-//        print_r($userInfo);
+        print_r($userInfo);
         $info = [
             'openid' => $userInfo['openid'],
             'nickname' => $userInfo['nickname'],
@@ -48,14 +50,81 @@ class WxController extends Controller
         }
 
     }
+    //创建自定义菜单
+    public function createMenu()
+    {
+        //自定义菜单接口
+        $url = 'https://api.weixin.qq.com/cgi-bin/menu/create?access_token=' . $this->getAccessToken();
+        //菜单数据
+        $menu_data = [
+            'button' => [
+                [
+                    'name' => '菜单',
+                    'button' => [
+                        'type' => 'view',
+                        'name' => '百度一下',
+                        'url' => 'www.baidu.com'
+                    ],
+                    [
+                        'type' => 'click',
+                        'name' => '点赞',
+                        'key' => 'menu_key001'
+                    ]
+                ],
+                [
+                    "type" => "pic_sysphoto",
+                    "name" => "拍照",
+                    "key" => "rselfmenu_1_0",
+                    "sub_button" => [ ]
+                ],
+                [
+                    "name" => "发送位置",
+                    "type" => "location_select",
+                    "key" => "rselfmenu_2_0"
+                ]
+            ]
+        ];
 
+        $json_str = json_encode($menu_data,JSON_UNESCAPED_UNICODE);   //处理中文编码
+        //发送请求
+        $client = new Client();
+        $response = $client->request('POST',$url,[
+            'body' => $json_str
+        ]);
+
+        //处理响应
+        $res_str = $response->getBody();
+        $res = json_decode($res_str,true);
+
+        //判断信息
+        if($res['errcode']>0){
+            echo '创建菜单成功';
+        }else{
+            echo '创建菜单失败';
+        }
+
+
+    }
     //获取access_token
     public function getAccessToken()
     {
-        $url = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid='.env('WX_APPID').'&secret='.env('WX_SECRET').'';
-        $response = file_get_contents($url);
-        $arr = json_decode($response);
-        return $arr->access_token;
+        $key = 'wx_access_token';
+        $token = Redis::get($key);
+        if(!$token){
+            echo 'cache';
+        }else{
+            echo 'Nocache';
+            $url = 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid='.env('WX_APPID').'&secret='.env('WX_SECRET').'';
+            $response = file_get_contents($url);
+            $arr = json_decode($response);
+
+            Redis::set($key,$arr->access_token);
+            Redis::expire($key,3600);
+
+            $token = $arr->access_token;
+        }
+        return $token;
+
     }
 
 
