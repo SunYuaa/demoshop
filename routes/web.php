@@ -14,3 +14,13 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+
+
+
+//weixin
+Route::get('/weixin/valid','Weixin\WxController@valid');
+
+Route::post('/weixin/valid','Weixin\WxController@event');
+
+Route::get('/weixin/access_token','Weixin\WxController@getAccessToken');
